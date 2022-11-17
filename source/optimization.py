@@ -7,7 +7,7 @@ from SimpleFEM.source.utilities.computation_utils import center_of_mass
 
 class LevelSetMethod():
 
-    def __init__(self, mesh: Mesh, mesh_shape: Tuple[float]):
+    def __init__(self, mesh: Mesh, mesh_shape: Tuple[float, float]):
         self.mesh = mesh
         self.mesh_shape = mesh_shape
 
