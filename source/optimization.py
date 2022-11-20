@@ -1,12 +1,10 @@
 from typing import Tuple
 import numpy as np
-from itertools import combinations
-import matplotlib.pyplot as plt
-from matplotlib import tri
 from queue import PriorityQueue
 
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.utilities.computation_utils import center_of_mass
+from source.mesh_utils import construct_graph, create_nodes_to_elems_mapping
 
 
 class LevelSetMethod:
@@ -37,25 +35,9 @@ class LevelSetMethod:
         points = np.array([[x, y] for x in x_points for y in y_points])
         return points
 
-    def construct_graph(self):
-        neighbours = [set() for _ in range(self.mesh.nodes_num)]
-        for nodes in self.mesh.nodes_of_elem:
-            for beg, end in combinations(nodes, 2):
-                neighbours[beg].add(end)
-                neighbours[end].add(beg)
-        neighbours = [list(v) for v in neighbours]
-        return neighbours
-
-    def create_nodes_to_elems_mapping(self):
-        node_to_elems = [[] for _ in range(self.mesh.nodes_num)]
-        for elem_idx, nodes in enumerate(self.mesh.nodes_of_elem):
-            for n in nodes:
-                node_to_elems[n].append(elem_idx)
-        return node_to_elems
-
     def compute_sign_distance(self, density: np.ndarray):
-        neighbours = self.construct_graph()
-        node_to_elems = self.create_nodes_to_elems_mapping()
+        neighbours = construct_graph(self.mesh)
+        node_to_elems = create_nodes_to_elems_mapping(self.mesh)
 
         boundary_nodes = [
             v for v in range(self.mesh.nodes_num)
