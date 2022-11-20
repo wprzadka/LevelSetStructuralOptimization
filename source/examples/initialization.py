@@ -23,3 +23,14 @@ if __name__ == '__main__':
     plt.tripcolor(triangulation, density, cmap='gray_r')
     plt.triplot(triangulation)
     plt.show()
+
+    sign_distance = optim.compute_sign_distance(density)
+
+    triangulation = tri.Triangulation(
+        x=mesh.coordinates2D[:, 0],
+        y=mesh.coordinates2D[:, 1],
+        triangles=mesh.nodes_of_elem
+    )
+    plt.tripcolor(triangulation, density, cmap='gray_r')
+    plt.tricontour(triangulation, sign_distance)
+    plt.show()
