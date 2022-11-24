@@ -1,8 +1,17 @@
+import os
+import sys
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import tri
 
+# add SimpleFEM root directory to path in order to make relative imports works
+FEM_PATH = os.path.abspath("SimpleFEM")
+sys.path.append(FEM_PATH)
+
 from SimpleFEM.source.mesh import Mesh
 from source.optimization import LevelSetMethod
+
+from SimpleFEM.source.examples.materials import MaterialProperty
 
 
 if __name__ == '__main__':
@@ -11,9 +20,16 @@ if __name__ == '__main__':
     mesh = Mesh(mesh_path)
     shape = (1., 0.5)
 
-    optim = LevelSetMethod(mesh, shape)
+    optim = LevelSetMethod(
+        mesh,
+        shape,
+        MaterialProperty.Polystyrene,
+        rhs_func=lambda x: np.array([0, 0]),
+        dirichlet_func=lambda x: np.array([0, 0]),
+        neumann_func=lambda x: np.array([0, -1e6])
+    )
 
-    density = optim.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=0.04)
+    density = optim.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
 
     triangulation = tri.Triangulation(
         x=mesh.coordinates2D[:, 0],
@@ -21,16 +37,16 @@ if __name__ == '__main__':
         triangles=mesh.nodes_of_elem
     )
     plt.tripcolor(triangulation, density, cmap='gray_r')
-    plt.triplot(triangulation)
+    # plt.triplot(triangulation)
     plt.show()
 
     sign_distance = optim.compute_sign_distance(density)
 
-    triangulation = tri.Triangulation(
-        x=mesh.coordinates2D[:, 0],
-        y=mesh.coordinates2D[:, 1],
-        triangles=mesh.nodes_of_elem
-    )
     plt.tripcolor(triangulation, density, cmap='gray_r')
     plt.tricontour(triangulation, sign_distance)
+    plt.show()
+
+    fig = plt.figure(figsize=plt.figaspect(1))
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    ax.plot_trisurf(triangulation, sign_distance, cmap='seismic')
     plt.show()
