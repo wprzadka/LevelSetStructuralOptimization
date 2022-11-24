@@ -9,7 +9,7 @@ FEM_PATH = os.path.abspath("SimpleFEM")
 sys.path.append(FEM_PATH)
 
 from SimpleFEM.source.mesh import Mesh
-from source.optimization import LevelSetMethod
+from sources.optimization import LevelSetMethod
 
 from SimpleFEM.source.examples.materials import MaterialProperty
 
@@ -17,7 +17,7 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 if __name__ == '__main__':
 
     # mesh_path = 'SimpleFEM/meshes/rectangle.msh'
-    mesh_path = 'source/examples/truss.msh'
+    mesh_path = 'sources/examples/truss.msh'
     mesh = Mesh(mesh_path)
     # shape = (1., 0.5)
     shape = (180, 60)

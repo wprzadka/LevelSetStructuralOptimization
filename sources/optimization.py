@@ -7,7 +7,7 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
-from source.mesh_utils import construct_graph, create_nodes_to_elems_mapping
+from sources.mesh_utils import construct_graph, create_nodes_to_elems_mapping
 
 
 class LevelSetMethod:
