@@ -16,9 +16,11 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 
 if __name__ == '__main__':
 
-    mesh_path = 'SimpleFEM/meshes/rectangle.msh'
+    # mesh_path = 'SimpleFEM/meshes/rectangle.msh'
+    mesh_path = 'source/examples/truss.msh'
     mesh = Mesh(mesh_path)
-    shape = (1., 0.5)
+    # shape = (1., 0.5)
+    shape = (180, 60)
 
     optim = LevelSetMethod(
         mesh,
