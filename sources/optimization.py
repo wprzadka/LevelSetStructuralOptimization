@@ -1,6 +1,5 @@
 from typing import Tuple, Callable
 import numpy as np
-from queue import PriorityQueue
 
 
 from SimpleFEM.source.examples.materials import MaterialProperty
@@ -8,7 +7,7 @@ from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
 from sources.finite_difference import FiniteDifference
-from sources.mesh_utils import construct_graph, create_nodes_to_elems_mapping
+from sources.signed_distance import SignedDistanceInitialization
 
 
 class LevelSetMethod:
@@ -54,43 +53,6 @@ class LevelSetMethod:
         points = np.array([[x, y] for x in x_points for y in y_points])
         return points
 
-    def compute_sign_distance(self, density: np.ndarray):
-        neighbours = construct_graph(self.mesh)
-        node_to_elems = create_nodes_to_elems_mapping(self.mesh)
-
-        boundary_nodes = [
-            v for v in range(self.mesh.nodes_num)
-            if len({density[elem] for elem in node_to_elems[v]}) == 2
-        ]
-        inner_nodes = [
-            v for v in range(self.mesh.nodes_num)
-            if {density[elem] for elem in node_to_elems[v]} == {0}
-        ]
-
-        que = PriorityQueue()
-        for node in boundary_nodes:
-            que.put((0, node))
-
-        distance = np.empty(shape=self.mesh.nodes_num)
-
-        visited = np.full_like(distance, fill_value=False, dtype=bool)
-        visited[boundary_nodes] = True
-
-        while not que.empty():
-            dist, node = que.get()
-            distance[node] = dist
-
-            for x in neighbours[node]:
-                if visited[x]:
-                    continue
-                local_dist = np.linalg.norm(self.mesh.coordinates2D[x] - self.mesh.coordinates2D[node])
-                que.put((dist + local_dist, x))
-                visited[x] = True
-
-        distance[inner_nodes] *= -1
-
-        return distance
-
     def get_elems_volumes(self):
         volumes = np.array([
             area_of_triangle(self.mesh.coordinates2D[nodes_ids])
@@ -120,7 +82,8 @@ class LevelSetMethod:
 
         # initialize level sets
         density = self.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
-        phi = self.compute_sign_distance(density)
+        sign_dist_init = SignedDistanceInitialization(domain_type='mesh', domain=self.mesh)
+        phi = sign_dist_init(density)
 
         # compute local stiffness matrices per element
         elems_stiff_mat = np.array([fem.construct_local_stiffness_matrix(el_idx) for el_idx in range(self.mesh.elems_num)])

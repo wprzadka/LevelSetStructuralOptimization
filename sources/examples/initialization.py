@@ -12,7 +12,7 @@ from SimpleFEM.source.mesh import Mesh
 from sources.optimization import LevelSetMethod
 
 from SimpleFEM.source.examples.materials import MaterialProperty
-
+from sources.signed_distance import SignedDistanceInitialization
 
 if __name__ == '__main__':
 
@@ -30,6 +30,7 @@ if __name__ == '__main__':
         dirichlet_func=lambda x: np.array([0, 0]),
         neumann_func=lambda x: np.array([0, -1e6])
     )
+    sign_dist = SignedDistanceInitialization(domain_type='mesh', domain=mesh)
 
     density = optim.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
 
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     # plt.triplot(triangulation)
     plt.show()
 
-    sign_distance = optim.compute_sign_distance(density)
+    sign_distance = sign_dist(density)
 
     plt.tripcolor(triangulation, density, cmap='gray_r')
     plt.tricontour(triangulation, sign_distance)
