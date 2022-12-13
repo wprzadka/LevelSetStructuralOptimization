@@ -7,12 +7,15 @@ from SimpleFEM.source.utilities.computation_utils import center_of_mass, base_fu
 
 class FemSolutionInterpolation():
 
-    def __init__(self, mesh: Mesh, fem_solution: np.ndarray):
+    def __init__(self, mesh: Mesh):
         self.mesh = mesh
-        self.values = fem_solution
         self.kdTree = KDTree([center_of_mass(v) for v in self.mesh.coordinates2D[self.mesh.nodes_of_elem]])
+        self.values = None
 
-    def __call__(self, x):
+    def __call__(self, x: np.ndarray):
+        if self.values is None:
+            raise Exception('FEM solution is not set. Call \'set_values_to_interpolate(fem_solution: np.ndarray)\' '
+                            'before requesting interpolated values')
         return self.get_value(x)
 
     def get_value(self, x: np.ndarray):
@@ -24,3 +27,6 @@ class FemSolutionInterpolation():
         # TODO get k closest centers and check for inclusion in triangle
         _, elem_idx = self.kdTree.query(x)
         return elem_idx
+
+    def set_values_to_interpolate(self, fem_solution: np.ndarray):
+        self.values = fem_solution

@@ -7,6 +7,7 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
+from sources.finite_difference import FiniteDifference
 from sources.mesh_utils import construct_graph, create_nodes_to_elems_mapping
 
 
@@ -126,6 +127,7 @@ class LevelSetMethod:
 
         for i in range(iteration_limit):
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
+
             # compute compliance
             displacement = fem.solve(modifier=density)
             elems_compliance = self.compliance(density, displacement, elem_stiff=elems_stiff_mat)
@@ -133,4 +135,6 @@ class LevelSetMethod:
             elems_weights = density * self.elem_volumes
 
             v_function = elems_weights - elems_compliance
-            # todo find solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
+
+            # todo find new \phi as solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
+            # finite_difference = FiniteDifference(self.mesh, phi, )
