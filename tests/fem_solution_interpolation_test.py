@@ -20,7 +20,7 @@ class MeshFixture:
 ])
 def test_fem_solution_interpolation_points(coordinates2D, nodes_of_elem, xs, exacts):
     mesh = MeshFixture(coordinates2D, nodes_of_elem)
-    interpolation = FemSolutionInterpolation(mesh, None)
+    interpolation = FemSolutionInterpolation(mesh)
 
     elem_idxs = interpolation.get_element_on_position(xs)
 
