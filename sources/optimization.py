@@ -31,28 +31,6 @@ class LevelSetMethod:
 
         self.elem_volumes = self.get_elems_volumes()
 
-    def fill_uniformly_with_holes(self, holes_per_axis: Tuple[int, int], radius: float) -> np.ndarray:
-
-        centers = self.get_uniform_points(holes_per_axis)
-
-        density = np.ones(self.mesh.elems_num)
-        radius_sqr = radius ** 2
-        for elem_idx, nodes in enumerate(self.mesh.nodes_of_elem):
-            point = center_of_mass(self.mesh.coordinates2D[nodes])
-            dist_sqr = np.sum((centers - point) ** 2, 1)
-            if np.any(dist_sqr < radius_sqr):
-                density[elem_idx] = 0
-
-        return density
-
-    def get_uniform_points(self, holes_per_axis: Tuple[int, int]):
-        border_dist = tuple(dim_size / (holes + 2) for dim_size, holes in zip(self.mesh_shape, holes_per_axis))
-        x_points = np.linspace(border_dist[0], self.mesh_shape[0] - border_dist[0], holes_per_axis[0])
-        y_points = np.linspace(border_dist[1], self.mesh_shape[1] - border_dist[1], holes_per_axis[1])
-
-        points = np.array([[x, y] for x in x_points for y in y_points])
-        return points
-
     def get_elems_volumes(self):
         volumes = np.array([
             area_of_triangle(self.mesh.coordinates2D[nodes_ids])
@@ -70,7 +48,6 @@ class LevelSetMethod:
         return elements_compliance
 
     def optimize(self, iteration_limit: int):
-
         fem = FEM(
             mesh=self.mesh,
             rhs_func=self.rhs_func,
@@ -79,10 +56,9 @@ class LevelSetMethod:
             young_modulus=self.material.value[0],
             poisson_ratio=self.material.value[1]
         )
-
         # initialize level sets
-        density = self.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
         sign_dist_init = SignedDistanceInitialization(domain_type='mesh', domain=self.mesh)
+        density = sign_dist_init.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
         phi = sign_dist_init(density)
 
         # compute local stiffness matrices per element

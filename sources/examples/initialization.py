@@ -21,18 +21,8 @@ if __name__ == '__main__':
     mesh = Mesh(mesh_path)
     # shape = (1., 0.5)
     shape = (180, 60)
-
-    optim = LevelSetMethod(
-        mesh,
-        shape,
-        MaterialProperty.Polystyrene,
-        rhs_func=lambda x: np.array([0, 0]),
-        dirichlet_func=lambda x: np.array([0, 0]),
-        neumann_func=lambda x: np.array([0, -1e6])
-    )
-    sign_dist = SignedDistanceInitialization(domain_type='mesh', domain=mesh)
-
-    density = optim.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
+    sign_dist = SignedDistanceInitialization(domain_type='mesh', domain=mesh, domain_shape=shape)
+    density = sign_dist.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=5)
 
     triangulation = tri.Triangulation(
         x=mesh.coordinates2D[:, 0],
