@@ -23,16 +23,19 @@ class RadialBaseFunctions:
 
     def __call__(self, x: np.ndarray):
         diffs = x - self.points
-        rbf_vals = np.sqrt(np.sum(diffs ** 2, axis=-1))
+        rbf_vals = self.rbf(diffs)
         vals = np.concatenate((rbf_vals, np.ones(1), x))
         return vals @ self.coefficients
+
+    def rbf(self, diff: np.ndarray):
+        return np.sqrt(np.sum(diff ** 2, axis=-1))
 
     def create_h_matrix(self):
         h_matrix_size = self.points_num + self.dims + 1
         h_matrix = np.zeros(shape=(h_matrix_size, h_matrix_size))
         # Compute A
         diffs = self.points[:, None, :] - self.points
-        h_matrix[:self.points_num, :self.points_num] = np.sqrt(np.sum(diffs ** 2, axis=-1))
+        h_matrix[:self.points_num, :self.points_num] = self.rbf(diffs)
         # Compute P
         h_matrix[self.points_num, :self.points_num] = 1
         h_matrix[:self.points_num, self.points_num] = 1
