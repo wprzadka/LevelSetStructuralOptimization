@@ -2,12 +2,7 @@ import numpy as np
 import pytest
 
 from sources.fem_solution_interpolation import FemSolutionInterpolation
-
-
-class MeshFixture:
-    def __init__(self, coordinates2D: np.ndarray, nodes_of_elem: np.ndarray):
-        self.coordinates2D = coordinates2D
-        self.nodes_of_elem = nodes_of_elem
+from tests.mesh_mock import MeshFixture
 
 
 @pytest.mark.parametrize("coordinates2D, nodes_of_elem, xs, exacts", [
