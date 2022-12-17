@@ -37,9 +37,8 @@ class RadialBaseFunctions:
         return diff / np.sqrt(np.sum(diff ** 2, axis=-1) + self.bias)[:, :, np.newaxis]
 
     def time_update(self, velocities: np.ndarray, dt: float):
-        coeffs = self.coefficients
-        fst = self.grad_in_points[:, :, 0] @ coeffs
-        snd = self.grad_in_points[:, :, 1] @ coeffs
+        fst = self.grad_in_points[:, :, 0] @ self.coefficients
+        snd = self.grad_in_points[:, :, 1] @ self.coefficients
         velocities = np.concatenate((velocities, np.zeros(self.dims + 1)))
         b = velocities * np.sqrt(fst ** 2 + snd ** 2)
         self.coefficients -= dt * self.inv_h_matrix @ b
