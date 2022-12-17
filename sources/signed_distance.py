@@ -11,7 +11,7 @@ class SignedDistanceInitialization:
 
     available_domains = ['mesh', 'grid']
 
-    def __init__(self, domain_type: str, domain: Union[Mesh, np.ndarray], domain_shape: tuple):
+    def __init__(self, domain_type: str, domain: Union[Mesh, np.ndarray], domain_shape: tuple, low_density_value: float = 0.0001):
         if domain_type not in self.available_domains:
             raise Exception(f'domain type {domain_type} is not available. Chose one from {self.available_domains}')
         self.domain_type = domain_type
@@ -19,6 +19,8 @@ class SignedDistanceInitialization:
 
         if domain_type == 'mesh':
             self.mesh = domain
+
+        self.low_density_value = low_density_value
 
     def __call__(self, density: np.ndarray):
         if self.domain_type == 'mesh':
@@ -35,7 +37,7 @@ class SignedDistanceInitialization:
         ]
         inner_nodes = [
             v for v in range(self.mesh.nodes_num)
-            if {density[elem] for elem in node_to_elems[v]} == {0}
+            if all(density[elem] < 1 for elem in node_to_elems[v])
         ]
         que = PriorityQueue()
         for node in boundary_nodes:
@@ -68,7 +70,7 @@ class SignedDistanceInitialization:
             point = center_of_mass(self.mesh.coordinates2D[nodes])
             dist_sqr = np.sum((centers - point) ** 2, 1)
             if np.any(dist_sqr < radius_sqr):
-                density[elem_idx] = 0
+                density[elem_idx] = self.low_density_value
         return density
 
     def get_uniform_points(self, holes_per_axis: Tuple[int, int]):
