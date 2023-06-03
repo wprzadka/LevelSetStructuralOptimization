@@ -1,8 +1,6 @@
 import os
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import tri
 
 # add SimpleFEM root directory to path in order to make relative imports works
 FEM_PATH = os.path.abspath("SimpleFEM")
@@ -12,16 +10,15 @@ from SimpleFEM.source.mesh import Mesh
 from sources.optimization import LevelSetMethod
 
 from SimpleFEM.source.examples.materials import MaterialProperty
-from sources.signed_distance import SignedDistanceInitialization
 
 if __name__ == '__main__':
+    mesh_path =  os.path.join(os.path.dirname(__file__), 'meshes/rectangle180x60v2.msh')
 
-    mesh_path = 'SimpleFEM/meshes/rectangle.msh'
-    # mesh_path = 'sources/examples/truss.msh'
     mesh = Mesh(mesh_path)
-    shape = (1., 0.5)
-    # shape = (180, 60)
+    shape = (180, 60)
 
+    mesh.set_boundary_condition(Mesh.BoundaryConditionType.DIRICHLET, ['left'])
+    mesh.set_boundary_condition(Mesh.BoundaryConditionType.NEUMANN, ['right-down'])
 
     optim = LevelSetMethod(
         mesh,
@@ -29,6 +26,6 @@ if __name__ == '__main__':
         MaterialProperty.Polystyrene,
         rhs_func=lambda x: np.array([0, 0]),
         dirichlet_func=lambda x: np.array([0, 0]),
-        neumann_func=lambda x: np.array([0, -1e6])
+        neumann_func=lambda x: np.array([0, -1e4])
     )
     optim.optimize(100)
