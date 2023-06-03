@@ -77,6 +77,10 @@ class LevelSetMethod:
         plt.show()
 
         init_phi = sign_dist_init(density)
+        init_phi_elems = np.array([
+            np.average(init_phi[nodes])
+            for nodes in self.mesh.nodes_of_elem
+        ])
 
         triangulation = tri.Triangulation(
             x=self.mesh.coordinates2D[:, 0],
@@ -86,14 +90,12 @@ class LevelSetMethod:
         plt.tricontour(triangulation, init_phi, levels=[0])
         plt.show()
 
-        phi = RadialBaseFunctions(self.mesh, init_phi)
-
         # compute local stiffness matrices per element
         elems_stiff_mat = np.array([fem.construct_local_stiffness_matrix(el_idx) for el_idx in range(self.mesh.elems_num)])
         # compute centers of elements to density computation
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
-        nodes_to_elems_mapping = create_nodes_to_elems_mapping(self.mesh)
+        phi = RadialBaseFunctions(self.mesh, points=elems_centers, init_values=init_phi_elems)
 
         for i in range(iteration_limit):
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
@@ -102,17 +104,15 @@ class LevelSetMethod:
             displacement = fem.solve(modifier=density)
             elems_compliance = self.compliance(density, displacement, elem_stiff=elems_stiff_mat)
             # compute volume
-            elems_weights = density * self.elem_volumes
+            # elems_weights = density * self.elem_volumes
 
-            v_function = elems_weights - elems_compliance
+            # v_function = elems_weights - elems_compliance
+            v_function = 30 - elems_compliance
             print('value function computed')
-
-
-            v_in_nodes = np.array([np.average(v_function[elems]) for elems in nodes_to_elems_mapping])
 
             # todo find new \phi as solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
             # finite_difference = FiniteDifference(self.mesh, phi, )
-            phi.time_update(v_in_nodes, 1)
+            phi.time_update(v_function, 1)
             print('HJB update')
 
             # update density based on phi
