@@ -14,6 +14,8 @@ from sources.signed_distance import SignedDistanceInitialization
 
 class LevelSetMethod:
 
+    available_methods = ["finite-difference", "rbf"]
+
     def __init__(
             self,
             mesh: Mesh,
@@ -22,6 +24,7 @@ class LevelSetMethod:
             rhs_func: Callable,
             dirichlet_func: Callable = None,
             neumann_func: Callable = None,
+            method: str = "finite-difference"
     ):
         self.mesh = mesh
         self.mesh_shape = mesh_shape
@@ -31,6 +34,7 @@ class LevelSetMethod:
         self.dirichlet_func = dirichlet_func
         self.neumann_func = neumann_func
 
+        self.method = method
         self.elem_volumes = self.get_elems_volumes()
         self.low_density_value = 0.001
 
@@ -95,7 +99,10 @@ class LevelSetMethod:
         # compute centers of elements to density computation
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
-        phi = RadialBaseFunctions(self.mesh, points=elems_centers, init_values=init_phi_elems)
+        if self.method == "rbf":
+            phi = RadialBaseFunctions(self.mesh, points=elems_centers, init_values=init_phi_elems)
+        elif self.method == "finite-difference":
+            phi = FiniteDifference(self.mesh, shape=self.mesh_shape, level_set_vals=init_phi_elems, space_delta=0.5, time_delta=0.05)
 
         for i in range(iteration_limit):
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
@@ -112,7 +119,10 @@ class LevelSetMethod:
 
             # todo find new \phi as solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
             # finite_difference = FiniteDifference(self.mesh, phi, )
-            phi.time_update(v_function, 1)
+            if self.method == "rbf":
+                phi.time_update(v_function, 1)
+            elif self.method == "finite-difference":
+                phi.update(v_function)
             print('HJB update')
 
             # update density based on phi
@@ -124,8 +134,6 @@ class LevelSetMethod:
                     y=self.mesh.coordinates2D[:, 1],
                     triangles=self.mesh.nodes_of_elem
                 )
-                # node_values = np.array([phi(x) for x in self.mesh.coordinates2D])
-                # plt.tricontour(triangulation, node_values, levels=[0])
-
-                plt.tripcolor(triangulation, density)
+                plt.tripcolor(triangulation, density, cmap='gray_r')
+                plt.title(f"density_{i}")
                 plt.show()

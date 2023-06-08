@@ -2,10 +2,10 @@ import numpy as np
 from scipy.spatial import KDTree
 
 from SimpleFEM.source.mesh import Mesh
-from SimpleFEM.source.utilities.computation_utils import center_of_mass, base_func
+from SimpleFEM.source.utilities.computation_utils import center_of_mass, interp_value
 
 
-class FemSolutionInterpolation():
+class FemSolutionInterpolation:
 
     def __init__(self, mesh: Mesh):
         self.mesh = mesh
@@ -20,13 +20,28 @@ class FemSolutionInterpolation():
 
     def get_value(self, x: np.ndarray):
         elem_idx = self.get_element_on_position(x)
-        coords = self.mesh.coordinates2D[self.mesh.nodes_of_elem[elem_idx]]
-        return base_func(x, coords)
+        nodes = self.mesh.nodes_of_elem[elem_idx]
+        coords = self.mesh.coordinates2D[nodes]
+        vals = self.values[nodes]
+        return interp_value(x, coords, vals)
 
-    def get_element_on_position(self, x: np.ndarray):
-        # TODO get k closest centers and check for inclusion in triangle
-        _, elem_idx = self.kdTree.query(x)
-        return elem_idx
+    """
+    :x: coordinate for which element has to be found
+    :k: number of closest element centers to check for inclusion of x
+    """
+    def get_element_on_position(self, x: np.ndarray, k: int = 6):
+        _, elem_ids = self.kdTree.query(x, k)
+        for e_idx in elem_ids:
+            if self.isInsideElement(x, e_idx):
+                return e_idx
+        raise Exception("No element contains the point")
+
+    def isInsideElement(self, point: np.ndarray, elem_idx: int):
+        coords = self.mesh.coordinates2D[self.mesh.nodes_of_elem[elem_idx]]
+        edges = np.roll(coords, -1, axis=0) - coords
+        inners = point - coords
+        signs = np.sign(np.sum(edges * inners, axis=1))
+        return 0 in signs or np.all(signs == signs[0])
 
     def set_values_to_interpolate(self, fem_solution: np.ndarray):
         self.values = fem_solution
