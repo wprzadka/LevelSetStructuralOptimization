@@ -73,15 +73,7 @@ class LevelSetMethod:
             domain_shape=self.mesh_shape,
             low_density_value=self.low_density_value
         )
-        density = sign_dist_init.fill_uniformly_with_holes(holes_per_axis=(6, 3), radius=min(*self.mesh_shape) / 10)
-
-        triangulation = tri.Triangulation(
-            x=self.mesh.coordinates2D[:, 0],
-            y=self.mesh.coordinates2D[:, 1],
-            triangles=self.mesh.nodes_of_elem
-        )
-        plt.tripcolor(triangulation, density, cmap='gray_r')
-        plt.show()
+        density = sign_dist_init.fill_uniformly_with_holes(holes_per_axis=(3, 2), radius=min(*self.mesh_shape) / 10)
 
         init_phi = sign_dist_init(density)
         init_phi_elems = np.array([
@@ -89,13 +81,23 @@ class LevelSetMethod:
             for nodes in self.mesh.nodes_of_elem
         ])
 
-        triangulation = tri.Triangulation(
-            x=self.mesh.coordinates2D[:, 0],
-            y=self.mesh.coordinates2D[:, 1],
-            triangles=self.mesh.nodes_of_elem
-        )
-        plt.tricontour(triangulation, init_phi, levels=[0])
-        plt.show()
+        if __debug__:
+            triangulation = tri.Triangulation(
+                x=self.mesh.coordinates2D[:, 0],
+                y=self.mesh.coordinates2D[:, 1],
+                triangles=self.mesh.nodes_of_elem
+            )
+            plt.tripcolor(triangulation, density, cmap='gray_r')
+            plt.title("initial holes")
+            plt.show()
+
+            plt.tricontour(triangulation, init_phi, levels=[-1, 0, 1])
+            plt.title("initial 0 level set")
+            plt.show()
+
+            plt.tripcolor(triangulation, init_phi_elems)
+            plt.title("initial level set values")
+            plt.show()
 
         # compute local stiffness matrices per element
         elems_stiff_mat = np.array([fem.construct_local_stiffness_matrix(el_idx) for el_idx in range(self.mesh.elems_num)])
@@ -125,13 +127,13 @@ class LevelSetMethod:
             # todo find new \phi as solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
             # finite_difference = FiniteDifference(self.mesh, phi, )
 
-            phi.update(v_function, 0.1)
+            phi.update(v_function, 0.01)
             print('HJB update')
 
             # update density based on phi
             density = np.array([1. if phi(x) < 0 else self.low_density_value for x in elems_centers])
 
-            if True:
+            if __debug__:
                 triangulation = tri.Triangulation(
                     x=self.mesh.coordinates2D[:, 0],
                     y=self.mesh.coordinates2D[:, 1],
