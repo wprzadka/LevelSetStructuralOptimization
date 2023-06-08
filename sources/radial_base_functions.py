@@ -4,9 +4,10 @@ from matplotlib import tri
 
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.utilities.computation_utils import center_of_mass
+from sources.LevelSetFunction import LevelSetFunction
 
 
-class RadialBaseFunctions:
+class RadialBaseFunctions(LevelSetFunction):
 
     def __init__(self, mesh: Mesh, points: np.ndarray, init_values: np.ndarray, dims: int = 2, const_bias: float = 0.001):
         self.dims = dims
@@ -35,7 +36,7 @@ class RadialBaseFunctions:
     def grad(self, diff: np.ndarray):
         return diff / np.sqrt(np.sum(diff ** 2, axis=-1) + self.bias ** 2)[:, :, np.newaxis]
 
-    def time_update(self, velocities: np.ndarray, dt: float):
+    def update(self, velocities: np.ndarray, dt: float):
         fst = self.grad_in_points[:, :, 0] @ self.coefficients
         snd = self.grad_in_points[:, :, 1] @ self.coefficients
 
@@ -45,7 +46,6 @@ class RadialBaseFunctions:
 
         change = dt * self.inv_h_matrix @ b
         self.coefficients += change
-        return self.coefficients, change
 
     def create_h_matrix(self):
         h_matrix_size = self.points_num + self.dims + 1

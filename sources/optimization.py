@@ -7,7 +7,6 @@ from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
 from sources.finite_difference import FiniteDifference
-from sources.mesh_utils import create_nodes_to_elems_mapping
 from sources.radial_base_functions import RadialBaseFunctions
 from sources.signed_distance import SignedDistanceInitialization
 
@@ -24,7 +23,7 @@ class LevelSetMethod:
             rhs_func: Callable,
             dirichlet_func: Callable = None,
             neumann_func: Callable = None,
-            method: str = "finite-difference"
+            method: str = "rbf"
     ):
         self.mesh = mesh
         self.mesh_shape = mesh_shape
@@ -102,7 +101,9 @@ class LevelSetMethod:
         if self.method == "rbf":
             phi = RadialBaseFunctions(self.mesh, points=elems_centers, init_values=init_phi_elems)
         elif self.method == "finite-difference":
-            phi = FiniteDifference(self.mesh, shape=self.mesh_shape, level_set_vals=init_phi_elems, space_delta=0.5, time_delta=0.05)
+            phi = FiniteDifference(self.mesh, shape=self.mesh_shape, level_set_vals=init_phi_elems, space_delta=0.5)
+        else:
+            raise Exception(f"Unknown method {self.method}. Use one of {self.available_methods}.")
 
         for i in range(iteration_limit):
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
@@ -119,10 +120,8 @@ class LevelSetMethod:
 
             # todo find new \phi as solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
             # finite_difference = FiniteDifference(self.mesh, phi, )
-            if self.method == "rbf":
-                phi.time_update(v_function, 1)
-            elif self.method == "finite-difference":
-                phi.update(v_function)
+
+            phi.update(v_function, 0.1)
             print('HJB update')
 
             # update density based on phi
