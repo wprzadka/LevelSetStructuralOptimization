@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial import KDTree
 
 from SimpleFEM.source.mesh import Mesh
-from SimpleFEM.source.utilities.computation_utils import center_of_mass, base_func, interp_value
+from SimpleFEM.source.utilities.computation_utils import center_of_mass, interp_value
 
 
 class FemSolutionInterpolation:
@@ -38,9 +38,9 @@ class FemSolutionInterpolation:
 
     def isInsideElement(self, point: np.ndarray, elem_idx: int):
         coords = self.mesh.coordinates2D[self.mesh.nodes_of_elem[elem_idx]]
-        edges = np.array([coords[i] - coords[i - 1] for i in range(0, 3)])
-        inner = np.array([point - coords[i - 1] for i in range(0, 3)])
-        signs = np.sign(np.sum(edges * inner, axis=1))
+        edges = np.roll(coords, -1, axis=0) - coords
+        inners = point - coords
+        signs = np.sign(np.sum(edges * inners, axis=1))
         return 0 in signs or np.all(signs == signs[0])
 
     def set_values_to_interpolate(self, fem_solution: np.ndarray):
