@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Tuple, Callable
 import numpy as np
 from matplotlib import tri, pyplot as plt
@@ -11,9 +12,12 @@ from sources.radial_base_functions import RadialBaseFunctions
 from sources.signed_distance import SignedDistanceInitialization
 
 
-class LevelSetMethod:
+class LevelSetUpdaterType(Enum):
+    FINITE_DIFFERENCE = 0
+    RADIAL_BASE_FUNCTIONS = 1
 
-    available_methods = ["finite-difference", "rbf"]
+
+class LevelSetMethod:
 
     def __init__(
             self,
@@ -23,7 +27,7 @@ class LevelSetMethod:
             rhs_func: Callable,
             dirichlet_func: Callable = None,
             neumann_func: Callable = None,
-            method: str = "rbf"
+            updater_type: LevelSetUpdaterType = LevelSetUpdaterType.RADIAL_BASE_FUNCTIONS
     ):
         self.mesh = mesh
         self.mesh_shape = mesh_shape
@@ -33,7 +37,7 @@ class LevelSetMethod:
         self.dirichlet_func = dirichlet_func
         self.neumann_func = neumann_func
 
-        self.method = method
+        self.updater_type = updater_type
         self.elem_volumes = self.get_elems_volumes()
         self.low_density_value = 0.001
 
@@ -98,12 +102,12 @@ class LevelSetMethod:
         # compute centers of elements to density computation
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
-        if self.method == "rbf":
+        if self.updater_type == LevelSetUpdaterType.RADIAL_BASE_FUNCTIONS:
             phi = RadialBaseFunctions(self.mesh, points=elems_centers, init_values=init_phi_elems)
-        elif self.method == "finite-difference":
+        elif self.updater_type == LevelSetUpdaterType.FINITE_DIFFERENCE:
             phi = FiniteDifference(self.mesh, shape=self.mesh_shape, level_set_vals=init_phi_elems, space_delta=0.5)
         else:
-            raise Exception(f"Unknown method {self.method}. Use one of {self.available_methods}.")
+            raise Exception(f'Unknown method {self.updater_type}. Use one of [{", ".join(map(str,LevelSetUpdaterType))}].')
 
         for i in range(iteration_limit):
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
