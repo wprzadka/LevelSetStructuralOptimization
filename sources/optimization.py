@@ -7,7 +7,7 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
-from sources.domain_initialization import generate_cosine_func, initialize_sign_distance, reinitalize
+from sources.domain_initialization import initialize_sign_distance, reinitalize
 from sources.finite_difference import FiniteDifference
 from sources.mesh_utils import construct_elems_adj_graph
 from sources.radial_base_functions import RadialBaseFunctions
@@ -81,7 +81,6 @@ class LevelSetMethod:
             poisson_ratio=self.material.value[1]
         )
         """
-
         # compute centers of elements to density computation
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
@@ -121,10 +120,6 @@ class LevelSetMethod:
             plt.title("initial holes")
             plt.show()
 
-            # plt.tricontour(triangulation, init_phi, levels=[-1, 0, 1])
-            # plt.title("initial 0 level set")
-            # plt.show()
-
             plt.tripcolor(triangulation, init_phi_elems)
             plt.colorbar()
             plt.title("initial level set values")
@@ -158,25 +153,14 @@ class LevelSetMethod:
             history['compliance'].append(compliance)
             history['weight'].append(weight)
 
-            # compute volume
-            # elems_weights = density * self.elem_volumes
-
-            # v_function = elems_weights - elems_compliance
-            # v_function = 300 - 200 * elems_compliance
-            # v_function = lag - elems_compliance
             v_function = elems_compliance - lag_mult
-            # v_function = -lag * np.ones_like(elems_compliance)
 
             print('value function computed')
-
-            # todo find new \phi as solution of HJB d\phi/dt - v |\nabla_x \phi| = 0
-            # finite_difference = FiniteDifference(self.mesh, phi, )
 
             v_function_filtered = self.smoothness_filter(v_function)
 
             for _ in range(10):
                 phi.update(v_function_filtered, dt = 1 / np.max(np.abs(v_function_filtered)))
-                # phi.update(v_function, 0.1 / np.max(np.abs(v_function)))
             print('HJB update')
 
 
