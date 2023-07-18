@@ -37,33 +37,22 @@ class SignedDistanceInitialization:
         ]
         inner_nodes = [
             v for v in range(self.mesh.nodes_num)
-            if all(density[elem] < 1 for elem in node_to_elems[v])
+            if all(density[elem] == 1 for elem in node_to_elems[v])
         ]
-        que = PriorityQueue()
-        for node in boundary_nodes:
-            que.put((0, node))
 
-        distance = np.empty(shape=self.mesh.nodes_num)
+        boundary = self.mesh.coordinates2D[boundary_nodes]
 
-        visited = np.full_like(distance, fill_value=False, dtype=bool)
-        visited[boundary_nodes] = True
-
-        while not que.empty():
-            dist, node = que.get()
-            distance[node] = dist
-
-            for x in neighbours[node]:
-                if visited[x]:
-                    continue
-                local_dist = np.linalg.norm(self.mesh.coordinates2D[x] - self.mesh.coordinates2D[node])
-                que.put((dist + local_dist, x))
-                visited[x] = True
+        distance = np.array([np.min(np.linalg.norm(coord - boundary, axis=1))
+                             for idx, coord in enumerate(self.mesh.coordinates2D)
+                             ])
         distance[inner_nodes] *= -1
 
         return distance
 
     def fill_uniformly_with_holes(self, holes_per_axis: Tuple[int, int], radius: float) -> np.ndarray:
         centers = self.get_uniform_points(holes_per_axis)
+        centers = self.remove_holes_from_boundary_conditions(centers, radius)
+
         density = np.ones(self.mesh.elems_num)
         radius_sqr = radius ** 2
         for elem_idx, nodes in enumerate(self.mesh.nodes_of_elem):
@@ -73,10 +62,36 @@ class SignedDistanceInitialization:
                 density[elem_idx] = self.low_density_value
         return density
 
-    def get_uniform_points(self, holes_per_axis: Tuple[int, int]):
-        border_dist = tuple(dim_size / (holes + 2) for dim_size, holes in zip(self.domain_shape, holes_per_axis))
-        x_points = np.linspace(border_dist[0], self.domain_shape[0] - border_dist[0], holes_per_axis[0])
-        y_points = np.linspace(border_dist[1], self.domain_shape[1] - border_dist[1], holes_per_axis[1])
+    def get_uniform_points(self, holes_per_axis: Tuple[int, int], include_borders=True):
+        low_limit = np.zeros(2)
+        high_limit = self.domain_shape
+        if not include_borders:
+            border_dist = np.array([dim_size / (holes + 2) for dim_size, holes in zip(self.domain_shape, holes_per_axis)])
+            low_limit += border_dist
+            high_limit -= border_dist
 
+        x_points = np.linspace(low_limit[0], high_limit[0], holes_per_axis[0])
+        y_points = np.linspace(low_limit[1], high_limit[1], holes_per_axis[1])
         points = np.array([[x, y] for x in x_points for y in y_points])
         return points
+
+    def remove_holes_from_boundary_conditions(self, holes: np.ndarray, radius: float) -> np.ndarray:
+        boundary_elems_centers = [
+            center_of_mass(self.mesh.coordinates2D[nodes])
+            for nodes in self.mesh.nodes_of_elem if self.is_boundary(nodes)
+        ]
+
+        valid_holes = np.full(holes.shape[0], fill_value=True, dtype=bool)
+        radius_sqr = radius ** 2
+        for idx, center in enumerate(holes):
+            dist_sqr = np.sum((center - boundary_elems_centers) ** 2, 1)
+            if np.any(dist_sqr < radius_sqr):
+                valid_holes[idx] = False
+        return holes[valid_holes]
+
+    def is_boundary(self, node_ids):
+        for n_idx in node_ids:
+            # if n_idx in self.mesh.dirichlet_boundaries or n_idx in self.mesh.neumann_boundaries:
+            if n_idx in self.mesh.neumann_boundaries:
+                return True
+        return False
