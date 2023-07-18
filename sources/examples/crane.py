@@ -23,9 +23,9 @@ if __name__ == '__main__':
     optim = LevelSetMethod(
         mesh,
         shape,
-        MaterialProperty.Polystyrene,
+        MaterialProperty.TestMaterial,
         rhs_func=lambda x: np.array([0, 0]),
         dirichlet_func=lambda x: np.array([0, 0]),
-        neumann_func=lambda x: np.array([0, -1e5])
+        neumann_func=lambda x: np.array([0, -1])
     )
-    optim.optimize(100)
+    optim.optimize(100, lag_mult=0.12)
