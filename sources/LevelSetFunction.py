@@ -19,3 +19,10 @@ class LevelSetFunction(metaclass=abc.ABCMeta):
         :param dt: time delta
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def reinitialize(self, values: np.ndarray) -> None:
+        """
+        :param values: level set function values in nodes
+        """
+        raise NotImplementedError

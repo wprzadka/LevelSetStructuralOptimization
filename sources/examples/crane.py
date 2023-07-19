@@ -12,7 +12,7 @@ from sources.optimization import LevelSetMethod
 from SimpleFEM.source.examples.materials import MaterialProperty
 
 if __name__ == '__main__':
-    mesh_path =  os.path.join(os.path.dirname(__file__), 'meshes/rectangle180x60v2.msh')
+    mesh_path =  os.path.join(os.path.dirname(__file__), 'meshes/rectangle180x60v3.msh')
 
     mesh = Mesh(mesh_path)
     shape = (180, 60)
@@ -23,9 +23,9 @@ if __name__ == '__main__':
     optim = LevelSetMethod(
         mesh,
         shape,
-        MaterialProperty.Polystyrene,
+        MaterialProperty.TestMaterial,
         rhs_func=lambda x: np.array([0, 0]),
         dirichlet_func=lambda x: np.array([0, 0]),
-        neumann_func=lambda x: np.array([0, -1e4])
+        neumann_func=lambda x: np.array([0, -1])
     )
-    optim.optimize(100)
+    optim.optimize(100, lag_mult=0.12)

@@ -1,5 +1,6 @@
-numpy
-matplotlib
-meshio
-scipy
-pytest
+numpy~=1.23.4
+matplotlib~=3.6.2
+meshio~=5.3.4
+scipy~=1.9.3
+pytest~=7.2.0
+scikit-fmm~=2023.4.2
