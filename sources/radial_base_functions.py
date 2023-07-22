@@ -57,7 +57,7 @@ class RadialBaseFunctions(LevelSetFunction):
         h_matrix_size = self.points_num + self.dims + 1
         h_matrix = np.zeros(shape=(h_matrix_size, h_matrix_size))
         # Compute A
-        diffs = self.points[:, None, :] - self.points
+        diffs = self.points[:, None] - self.points
         h_matrix[:self.points_num, :self.points_num] = self.rbf(diffs)
         # Compute P
         h_matrix[self.points_num, :self.points_num] = 1
@@ -69,8 +69,7 @@ class RadialBaseFunctions(LevelSetFunction):
     def create_grad_in_points(self):
         size = self.points_num + self.dims + 1
         grad_in_points = np.empty((self.points_num, size, self.dims))
-        # todo check self.points[:, None, :] or self.points[None, :]
-        diffs = self.points[:, None, :] - self.points
+        diffs = self.points[:, None] - self.points
         grad_in_points[:self.points_num, :self.points_num] = self.grad(diffs)
         grad_in_points[:, self.points_num:] = np.array([[0, 0], [1, 0], [0, 1]])
         return grad_in_points
