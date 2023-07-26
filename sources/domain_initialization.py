@@ -20,7 +20,7 @@ def initialize_sign_distance(shape: tuple, points: np.ndarray, holes_per_axis: t
     dom_x = np.linspace(0, 1, shape[0])
     dom_y = np.linspace(0, 1, shape[1])
     X, Y = np.meshgrid(dom_x, dom_y)
-    base_vals = -np.cos(X * holes_per_axis[0] * np.pi) * np.cos(Y * holes_per_axis[1] * np.pi) + radius - 1
+    base_vals = -np.cos(X * holes_per_axis[0] * 2 * np.pi) * np.cos(Y * holes_per_axis[1] * 2 * np.pi) + radius - 1
     domain = np.where(base_vals > 0, 1, -1)
     signed_dist = distance(domain)
 
@@ -29,7 +29,9 @@ def initialize_sign_distance(shape: tuple, points: np.ndarray, holes_per_axis: t
 
 
 def generate_cosine_func(shape: tuple, points: np.ndarray, holes_per_axis: tuple, radius: float):
-    phi = -np.cos(points[:, 0] / shape[0] * holes_per_axis[0] * np.pi) * np.cos(points[:, 1] / shape[1] * holes_per_axis[1] * np.pi) + radius - 1
+    phi = -np.cos(points[:, 0] / shape[0] * holes_per_axis[0] * 2 * np.pi) \
+          * np.cos(points[:, 1] / shape[1] * holes_per_axis[1] * 2 * np.pi) \
+          + radius - 1
     return phi
 
 

@@ -85,7 +85,7 @@ class LevelSetMethod:
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
         # density = sign_dist_init.fill_uniformly_with_holes(holes_per_axis=(4, 3), radius=min(*self.mesh_shape) / 8)
-        init_func = generate_cosine_func(self.mesh_shape, elems_centers, (8, 4), 0.6)
+        init_func = generate_cosine_func(self.mesh_shape, elems_centers, (4, 2), 0.6)
         density = np.where(init_func < 0, 1., self.low_density_value)
 
         # initialize level sets
@@ -107,7 +107,7 @@ class LevelSetMethod:
         # compute centers of elements to density computation
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
-        init_phi_elems = initialize_sign_distance(self.mesh_shape, elems_centers, (16, 6), 0.5)
+        init_phi_elems = initialize_sign_distance(self.mesh_shape, elems_centers, (8, 3), 0.5)
         density = np.where(init_phi_elems < 0, 1., self.low_density_value)
 
         if __debug__:
