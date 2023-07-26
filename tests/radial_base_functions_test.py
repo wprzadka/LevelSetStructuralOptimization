@@ -21,7 +21,7 @@ def test_rbf_values_on_element_centers(mesh_path, func):
     ])
     exact = func(points)
 
-    rbf_interpolation = RadialBaseFunctions(mesh, points, exact, dims=2)
+    rbf_interpolation = RadialBaseFunctions(points, exact, dims=2)
     values = np.array([rbf_interpolation(x) for x in points])
 
     assert np.allclose(values, exact)
