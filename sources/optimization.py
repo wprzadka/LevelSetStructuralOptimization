@@ -189,6 +189,7 @@ class LevelSetMethod:
                     axs[i].set_ylabel(lab)
                     axs[i].set_xlabel("iteration")
                     axs[i].grid()
+                plt.savefig('plots/history')
                 plt.show()
                 plt.close(fig)
 
