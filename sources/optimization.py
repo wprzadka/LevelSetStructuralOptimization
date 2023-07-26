@@ -7,10 +7,9 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
-from sources.domain_initialization import initialize_sign_distance, reinitalize
+from sources.domain_initialization import generate_cosine_func
 from sources.finite_difference import FiniteDifference
 from sources.mesh_utils import construct_elems_adj_graph
-from sources.radial_base_functions import RadialBaseFunctions
 from sources.rbf_filter_proxy import RbfFilterPoints
 from sources.signed_distance import SignedDistanceInitialization
 
@@ -80,7 +79,7 @@ class LevelSetMethod:
             young_modulus=self.material.value[0],
             poisson_ratio=self.material.value[1]
         )
-        """
+
         # compute centers of elements to density computation
         elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
@@ -95,20 +94,8 @@ class LevelSetMethod:
             domain_shape=self.mesh_shape,
             low_density_value=self.low_density_value
         )
-        
 
-        init_phi = sign_dist_init(density)
-        init_phi_elems = np.array([
-            np.average(init_phi[nodes])
-            for nodes in self.mesh.nodes_of_elem
-        ])
-        """
-
-        # compute centers of elements to density computation
-        elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
-
-        init_phi_elems = initialize_sign_distance(self.mesh_shape, elems_centers, (8, 3), 0.5)
-        density = np.where(init_phi_elems < 0, 1., self.low_density_value)
+        init_phi_elems = sign_dist_init(density)
 
         if __debug__:
             triangulation = tri.Triangulation(
@@ -130,7 +117,7 @@ class LevelSetMethod:
 
         if self.updater_type == LevelSetUpdaterType.RADIAL_BASE_FUNCTIONS:
             # phi = RadialBaseFunctions(points=elems_centers, init_values=init_phi_elems)
-            phi = RbfFilterPoints(points_ratio=0.8, points=elems_centers, init_values=init_phi_elems)
+            phi = RbfFilterPoints(points_ratio=0.2, points=elems_centers, init_values=init_phi_elems)
         elif self.updater_type == LevelSetUpdaterType.FINITE_DIFFERENCE:
             phi = FiniteDifference(self.mesh, shape=self.mesh_shape, level_set_vals=init_phi_elems, space_delta=0.5)
         else:
@@ -163,22 +150,13 @@ class LevelSetMethod:
                 phi.update(v_function_filtered, dt = 1 / np.max(np.abs(v_function_filtered)))
             print('HJB update')
 
-
-            if i > 0 and i % 5 == 0:
-                # init_phi = sign_dist_init(density)
-                # init_phi_elems = np.array([
-                #     np.average(init_phi[nodes])
-                #     for nodes in self.mesh.nodes_of_elem
-                # ])
-
-                phi_values = np.array([phi(x) for x in elems_centers])
-                init_phi_elems = reinitalize(self.mesh_shape, elems_centers, phi_values)
-                phi.reinitialize(init_phi_elems)
-
             # update density based on phi
             phi_values = np.array([phi(x) for x in elems_centers])
             density = np.where(phi_values < 0, 1., self.low_density_value)
 
+            if i > 0 and i % 5 == 0:
+                init_phi_elems = sign_dist_init(density)
+                phi.reinitialize(init_phi_elems)
 
             if __debug__ or i == iteration_limit - 1:
 

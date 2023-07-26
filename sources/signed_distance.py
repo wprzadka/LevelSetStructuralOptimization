@@ -24,7 +24,12 @@ class SignedDistanceInitialization:
 
     def __call__(self, density: np.ndarray):
         if self.domain_type == 'mesh':
-            return self.compute_sign_distance_on_mesh(density)
+            init_phi = self.compute_sign_distance_on_mesh(density)
+            init_phi_elems = np.array([
+                np.average(init_phi[nodes])
+                for nodes in self.mesh.nodes_of_elem
+            ])
+            return init_phi_elems
         elif self.domain_type == 'grid':
             raise NotImplementedError()
 
@@ -35,6 +40,7 @@ class SignedDistanceInitialization:
             v for v in range(self.mesh.nodes_num)
             if len({density[elem] for elem in node_to_elems[v]}) == 2
         ]
+        assert len(boundary_nodes) > 0
         inner_nodes = [
             v for v in range(self.mesh.nodes_num)
             if all(density[elem] == 1 for elem in node_to_elems[v])
