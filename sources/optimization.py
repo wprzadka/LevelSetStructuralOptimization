@@ -7,15 +7,9 @@ from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import area_of_triangle
-from sources.finite_difference import FiniteDifference
 from sources.mesh_utils import construct_elems_adj_graph
 from sources.rbf_filter_proxy import RbfFilterPoints
 from sources.signed_distance import SignedDistanceInitialization
-
-
-class LevelSetUpdaterType(Enum):
-    FINITE_DIFFERENCE = 0
-    RADIAL_BASE_FUNCTIONS = 1
 
 
 class LevelSetMethod:
@@ -28,7 +22,6 @@ class LevelSetMethod:
             rhs_func: Callable,
             dirichlet_func: Callable = None,
             neumann_func: Callable = None,
-            updater_type: LevelSetUpdaterType = LevelSetUpdaterType.RADIAL_BASE_FUNCTIONS,
     ):
         self.mesh = mesh
         self.mesh_shape = mesh_shape
@@ -38,7 +31,6 @@ class LevelSetMethod:
         self.dirichlet_func = dirichlet_func
         self.neumann_func = neumann_func
 
-        self.updater_type = updater_type
         self.elem_volumes = self.get_elems_volumes()
         self.low_density_value = 1e-4
 
@@ -106,13 +98,7 @@ class LevelSetMethod:
         # compute local stiffness matrices per element
         elems_stiff_mat = np.array([fem.construct_local_stiffness_matrix(el_idx) for el_idx in range(self.mesh.elems_num)])
 
-        if self.updater_type == LevelSetUpdaterType.RADIAL_BASE_FUNCTIONS:
-            # phi = RadialBaseFunctions(points=elems_centers, init_values=init_phi_elems)
-            phi = RbfFilterPoints(points_ratio=0.2, points=elems_centers, init_values=init_phi_elems)
-        elif self.updater_type == LevelSetUpdaterType.FINITE_DIFFERENCE:
-            phi = FiniteDifference(self.mesh, shape=self.mesh_shape, level_set_vals=init_phi_elems, space_delta=0.5)
-        else:
-            raise Exception(f'Unknown method {self.updater_type}. Use one of [{", ".join(map(str,LevelSetUpdaterType))}].')
+        phi = RbfFilterPoints(points_ratio=0.3, points=sign_dist_init.elems_centers, init_values=init_phi_elems)
 
         history = {'cost': [], 'compliance': [], "weight": []}
 
