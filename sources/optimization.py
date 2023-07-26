@@ -6,8 +6,7 @@ from matplotlib import tri, pyplot as plt
 from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
-from SimpleFEM.source.utilities.computation_utils import center_of_mass, area_of_triangle
-from sources.domain_initialization import generate_cosine_func
+from SimpleFEM.source.utilities.computation_utils import area_of_triangle
 from sources.finite_difference import FiniteDifference
 from sources.mesh_utils import construct_elems_adj_graph
 from sources.rbf_filter_proxy import RbfFilterPoints
@@ -80,21 +79,13 @@ class LevelSetMethod:
             poisson_ratio=self.material.value[1]
         )
 
-        # compute centers of elements to density computation
-        elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
-
-        # density = sign_dist_init.fill_uniformly_with_holes(holes_per_axis=(4, 3), radius=min(*self.mesh_shape) / 8)
-        init_func = generate_cosine_func(self.mesh_shape, elems_centers, (4, 2), 0.6)
-        density = np.where(init_func < 0, 1., self.low_density_value)
-
         # initialize level sets
         sign_dist_init = SignedDistanceInitialization(
-            domain_type='mesh',
-            domain=self.mesh,
             domain_shape=self.mesh_shape,
+            mesh=self.mesh,
             low_density_value=self.low_density_value
         )
-
+        density = sign_dist_init.init_domain_with_holes((4, 2), 0.6)
         init_phi_elems = sign_dist_init(density)
 
         if __debug__:
@@ -151,7 +142,7 @@ class LevelSetMethod:
             print('HJB update')
 
             # update density based on phi
-            phi_values = np.array([phi(x) for x in elems_centers])
+            phi_values = np.array([phi(x) for x in sign_dist_init.elems_centers])
             density = np.where(phi_values < 0, 1., self.low_density_value)
 
             if i > 0 and i % 5 == 0:
