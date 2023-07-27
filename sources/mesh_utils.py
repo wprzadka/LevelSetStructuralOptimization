@@ -3,13 +3,14 @@ from itertools import combinations
 from SimpleFEM.source.mesh import Mesh
 
 
-def construct_graph(mesh: Mesh):
+def construct_nodes_adj_graph(mesh: Mesh):
     neighbours = [set() for _ in range(mesh.nodes_num)]
     for nodes in mesh.nodes_of_elem:
         for beg, end in combinations(nodes, 2):
             neighbours[beg].add(end)
             neighbours[end].add(beg)
     neighbours = [list(v) for v in neighbours]
+    assert all([len(x) > 0 for x in neighbours])
     return neighbours
 
 
