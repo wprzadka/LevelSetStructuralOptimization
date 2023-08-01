@@ -3,6 +3,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
+import heapq
 
 from matplotlib import tri
 
@@ -23,7 +24,7 @@ class SignedDistanceInitialization:
 
 
     def __call__(self, density: np.ndarray):
-        init_phi = self.compute_sign_dist(density)
+        init_phi = self.compute_sign_distance_direct(density)
         init_phi_elems = np.array([
             np.average(init_phi[nodes])
             for nodes in self.mesh.nodes_of_elem
@@ -32,34 +33,24 @@ class SignedDistanceInitialization:
 
 
     def compute_sign_distance_direct(self, density: np.ndarray):
-        boundary_nodes = [
-            v for v in range(self.mesh.nodes_num)
-            if len({density[elem] for elem in self.node_to_elems[v]}) == 2
-        ]
+        boundary_nodes = self.get_boundary_nodes(density)
         assert len(boundary_nodes) > 0
-        inner_nodes = [
-            v for v in range(self.mesh.nodes_num)
-            if all(density[elem] == 1 for elem in self.node_to_elems[v])
-        ]
         boundary = self.mesh.coordinates2D[boundary_nodes]
-
         distance = np.min(
-            np.linalg.norm(self.mesh.coordinates2D.reshape(-1, 1, 2) - boundary.reshape(1, -1, 2), axis=-1), axis=-1
+            np.linalg.norm(
+                self.mesh.coordinates2D[:, None] - boundary,
+                axis=-1
+            ),
+            axis=-1
         )
+        inner_nodes = self.get_inner_nodes(density)
         distance[inner_nodes] *= -1
 
         return distance
 
-    def compute_sign_dist(self, density: np.ndarray):
-        boundary_nodes = [
-            v for v in range(self.mesh.nodes_num)
-            if len({density[elem] for elem in self.node_to_elems[v]}) == 2
-        ]
+    def compute_sign_dist_step(self, density: np.ndarray):
+        boundary_nodes = self.get_boundary_nodes(density)
         assert len(boundary_nodes) > 0
-        inner_nodes = [
-            v for v in range(self.mesh.nodes_num)
-            if all(density[elem] == 1 for elem in self.node_to_elems[v])
-        ]
 
         distance = np.full(self.mesh.nodes_num, fill_value=-1)
         distance[boundary_nodes] = 0
@@ -75,9 +66,33 @@ class SignedDistanceInitialization:
                 distance[node] = dist + 1
                 que.append(node)
 
+        inner_nodes = self.get_inner_nodes(density)
         distance[inner_nodes] *= -1
         return distance
 
+    def compute_sign_dist(self, density):
+        boundary_nodes = self.get_boundary_nodes(density)
+        assert len(boundary_nodes) > 0
+
+        distance = np.full(self.mesh.nodes_num, fill_value=np.inf)
+        distance[boundary_nodes] = 0
+
+        que = [
+            (np.linalg.norm(self.mesh.coordinates2D[s] - self.mesh.coordinates2D[x]), x)
+            for s in boundary_nodes for x in self.nodes_adj_graph[s]
+        ]
+        while len(que) > 0:
+            dist, idx = heapq.heappop(que)
+            if dist < distance[idx]:
+                distance[idx] = dist
+                for neigh in self.nodes_adj_graph[idx]:
+                    extra_dist = np.linalg.norm(self.mesh.coordinates2D[idx] - self.mesh.coordinates2D[neigh])
+                    heapq.heappush(que, (dist + extra_dist, neigh))
+
+        inner_nodes = self.get_inner_nodes(density)
+        distance[inner_nodes] *= -1
+
+        return distance
 
     def init_domain_with_holes(self, holes_per_axis: tuple, radius: float):
         phi = -np.cos(self.elems_centers[:, 0] / self.dom_shape[0] * holes_per_axis[0] * 2 * np.pi) \
@@ -85,7 +100,19 @@ class SignedDistanceInitialization:
               + radius - 1
         return np.where(phi < 0, 1., self.low_density_value)
 
-    def is_boundary(self, node_ids):
+    def get_boundary_nodes(self, density: np.ndarray):
+        return [
+            v for v in range(self.mesh.nodes_num)
+            if len({density[elem] for elem in self.node_to_elems[v]}) == 2
+        ]
+
+    def get_inner_nodes(self, density: np.ndarray):
+        return [
+            v for v in range(self.mesh.nodes_num)
+            if all(density[elem] == 1 for elem in self.node_to_elems[v])
+        ]
+
+    def is_neumann_boundary(self, node_ids):
         for n_idx in node_ids:
             # if n_idx in self.mesh.dirichlet_boundaries or n_idx in self.mesh.neumann_boundaries:
             if n_idx in self.mesh.neumann_boundaries:
@@ -106,11 +133,17 @@ if __name__ == '__main__':
     exact_time = time.time() - start
 
     start = time.time()
-    fast = sd.compute_sign_dist(density)
-    fast_time = time.time() - start
+    bfs = sd.compute_sign_dist_step(density)
+    bfs_time = time.time() - start
+
+    start = time.time()
+    dijkstra = sd.compute_sign_dist(density)
+    dijkstra_time = time.time() - start
+
 
     print(f'exact: {exact_time}')
-    print(f'fast : {fast_time}')
+    print(f'bfs : {bfs_time}')
+    print(f'dijkstra : {dijkstra_time}')
 
     triangulation = tri.Triangulation(
         x=mesh.coordinates2D[:, 0],
@@ -121,7 +154,18 @@ if __name__ == '__main__':
     plt.title('exact')
     plt.colorbar()
     plt.show()
-    plt.tripcolor(triangulation, fast)
+
+    plt.tripcolor(triangulation, bfs)
     plt.title('fast')
+    plt.colorbar()
+    plt.show()
+
+    plt.tripcolor(triangulation, dijkstra)
+    plt.title('dijkstra')
+    plt.colorbar()
+    plt.show()
+
+    plt.tripcolor(triangulation, dijkstra - exact)
+    plt.title('difference')
     plt.colorbar()
     plt.show()
