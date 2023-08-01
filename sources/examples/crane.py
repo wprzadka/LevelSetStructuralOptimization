@@ -12,6 +12,7 @@ from sources.optimization import LevelSetMethod
 from SimpleFEM.source.examples.materials import MaterialProperty
 
 if __name__ == '__main__':
+    np.random.seed(0)
     mesh_path =  os.path.join(os.path.dirname(__file__), 'meshes/rectangle180x60v3.msh')
 
     mesh = Mesh(mesh_path)
