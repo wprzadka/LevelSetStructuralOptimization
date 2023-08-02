@@ -137,3 +137,13 @@ class PlottingUtils:
 
         plt.savefig(os.path.join(Config.IMAGES_PATH.value, file_name), bbox_inches='tight')
         plt.close(fig)
+
+    def plot_history(self, history: dict, file_name: str):
+        fig, axs = plt.subplots(len(history), 1)
+        for iteration, lab in enumerate(history.keys()):
+            axs[iteration].plot(history[lab])
+            axs[iteration].set_ylabel(lab)
+            axs[iteration].set_xlabel("iteration")
+            axs[iteration].grid()
+        plt.savefig(os.path.join(Config.IMAGES_PATH.value, file_name), bbox_inches='tight')
+        plt.close(fig)
