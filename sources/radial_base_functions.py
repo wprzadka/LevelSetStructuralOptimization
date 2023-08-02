@@ -26,8 +26,7 @@ class RadialBaseFunctions(LevelSetFunction):
             np.zeros(shape=(self.dims + 1))
         ))
         self.coefficients = self.inv_h_matrix @ rhs
-        if __debug__:
-            self.plot_surface()
+
 
     # TODO vectorise
     def __call__(self, x: np.ndarray):
@@ -73,20 +72,6 @@ class RadialBaseFunctions(LevelSetFunction):
         grad_in_points[:self.points_num, :self.points_num] = self.grad(diffs)
         grad_in_points[:, self.points_num:] = np.array([[0, 0], [1, 0], [0, 1]])
         return grad_in_points
-
-    def plot_surface(self):
-        dom_x = np.linspace(0, 180, 100)
-        dom_y = np.linspace(0, 60, 100)
-        X, Y = np.meshgrid(dom_x, dom_y)
-        Z = np.array([
-            self.__call__(v) for v in zip(X.flatten(), Y.flatten())
-        ]).reshape(X.shape)
-        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-        ax.set_box_aspect((np.ptp(X), np.ptp(Y), 20))
-        ax.plot_surface(X, Y, np.zeros_like(X), color='tab:blue')
-        ax.plot_surface(X, Y, Z, cmap='viridis')
-        fig.show()
-        plt.close(fig)
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
 from SimpleFEM.source.utilities.computation_utils import area_of_triangle
 from sources.mesh_utils import construct_elems_adj_graph
+from sources.plotting_utils import PlottingUtils
 from sources.rbf_filter_proxy import RbfFilterPoints
 from sources.signed_distance import SignedDistanceInitialization
 
@@ -35,6 +36,9 @@ class LevelSetMethod:
         self.low_density_value = 1e-4
 
         self.adj_elems = construct_elems_adj_graph(mesh)
+        self.plots_utils = PlottingUtils(
+            mesh=self.mesh,
+        )
 
 
     def get_elems_volumes(self):
@@ -81,19 +85,7 @@ class LevelSetMethod:
         init_phi_elems = sign_dist_init(density)
 
         if __debug__:
-            triangulation = tri.Triangulation(
-                x=self.mesh.coordinates2D[:, 0],
-                y=self.mesh.coordinates2D[:, 1],
-                triangles=self.mesh.nodes_of_elem
-            )
-            plt.tripcolor(triangulation, density, cmap='gray_r')
-            plt.title("initial holes")
-            plt.show()
-
-            plt.tripcolor(triangulation, init_phi_elems)
-            plt.colorbar()
-            plt.title("initial level set values")
-            plt.show()
+            self.plots_utils.initial_domain_plot(density, init_phi_elems)
 
         # compute local stiffness matrices per element
         elems_stiff_mat = np.array([fem.construct_local_stiffness_matrix(el_idx) for el_idx in range(self.mesh.elems_num)])
@@ -102,8 +94,8 @@ class LevelSetMethod:
 
         history = {'cost': [], 'compliance': [], "weight": []}
 
-        for i in range(1, iteration_limit):
-            print(f"iteration {i}")
+        for iteration in range(1, iteration_limit):
+            print(f"iteration {iteration}")
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
 
             # compute compliance
@@ -112,92 +104,46 @@ class LevelSetMethod:
 
             weight = np.sum(density * self.elem_volumes)
             compliance = np.sum(elems_compliance)
+            cost = compliance + lag_mult * weight
 
-            history['cost'].append(compliance + lag_mult * weight)
+            print(f'cost = {cost}')
+            print(f'compliance = {compliance}')
+            print(f'weight = {weight}')
+
+            history['cost'].append(cost)
             history['compliance'].append(compliance)
             history['weight'].append(weight)
 
             v_function = elems_compliance - lag_mult
-
-            print('value function computed')
-
             v_function_filtered = self.smoothness_filter(v_function)
 
             for _ in range(10):
                 phi.update(v_function_filtered, dt = 1 / np.max(np.abs(v_function_filtered)))
-            print('HJB update')
 
             # update density based on phi
             phi_values = np.array([phi(x) for x in sign_dist_init.elems_centers])
             density = np.where(phi_values < 0, 1., self.low_density_value)
 
-            if i > 0 and i % 5 == 0:
+            if iteration > 0 and iteration % 5 == 0:
                 init_phi_elems = sign_dist_init(density)
                 phi.reinitialize(init_phi_elems)
 
-            if __debug__ or i == iteration_limit - 1:
-
-                print(elems_compliance.max(), ' / ', elems_compliance.min())
-
-                triangulation = tri.Triangulation(
-                    x=self.mesh.coordinates2D[:, 0],
-                    y=self.mesh.coordinates2D[:, 1],
-                    triangles=self.mesh.nodes_of_elem
+            if iteration < 25 or iteration % 5 == 0 or iteration in [32, 64]:
+                self.plots_utils.make_plots(
+                    displacement,
+                    density,
+                    v_function,
+                    iteration
                 )
-
-                plt.tripcolor(triangulation, v_function)
-                plt.title('velocity function')
-                plt.colorbar()
-                plt.show()
-
-                plt.tripcolor(triangulation, v_function_filtered)
-                plt.title('velocity function filtered')
-                plt.colorbar()
-                plt.savefig(f'plots/v_func{i}')
-                plt.show()
-
-                triangulation.set_mask(density < 0.5)
-                plt.tripcolor(triangulation, elems_compliance)
-                plt.colorbar()
-
-                vals = np.array([phi(x) for x in self.mesh.coordinates2D])
-                plt.tricontour(triangulation, vals)
-                plt.colorbar()
-                plt.title(f"compliance_{i}")
-                plt.savefig(f'plots/compl{i}')
-                plt.show()
-
-                plot_displ(self.mesh, displacement, density, scale_factor=1)
+                self.plots_utils.plot_implicit_function(rbf=phi, file_name=f'phi/phi{iteration}')
 
                 fig, axs = plt.subplots(3, 1)
-                for i, lab in enumerate(history.keys()):
-                    axs[i].plot(history[lab])
-                    axs[i].set_ylabel(lab)
-                    axs[i].set_xlabel("iteration")
-                    axs[i].grid()
+                for iteration, lab in enumerate(history.keys()):
+                    axs[iteration].plot(history[lab])
+                    axs[iteration].set_ylabel(lab)
+                    axs[iteration].set_xlabel("iteration")
+                    axs[iteration].grid()
                 plt.savefig('plots/history')
                 plt.show()
                 plt.close(fig)
 
-def plot_displ(mesh, displ, density, scale_factor = 1e2):
-    half = len(displ) // 2
-    displacements = scale_factor * np.vstack((displ[:half], displ[half:])).T
-
-    before = tri.Triangulation(
-        x=mesh.coordinates2D[:, 0],
-        y=mesh.coordinates2D[:, 1],
-        triangles=mesh.nodes_of_elem
-    )
-    before.set_mask(density < 0.5)
-    plt.triplot(before, color='#1f77b4')
-
-    after = tri.Triangulation(
-        x=mesh.coordinates2D[:, 0] + displacements[:, 0],
-        y=mesh.coordinates2D[:, 1] + displacements[:, 1],
-        triangles=mesh.nodes_of_elem
-    )
-    after.set_mask(density < 0.5)
-    plt.triplot(after, color='#ff7f0e')
-    plt.title("displacements")
-    plt.grid()
-    plt.show()
