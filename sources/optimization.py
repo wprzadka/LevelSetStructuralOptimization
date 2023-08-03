@@ -21,7 +21,11 @@ class LevelSetMethod:
             rhs_func: Callable,
             dirichlet_func: Callable = None,
             neumann_func: Callable = None,
-            lag_mult: float = 1
+            lag_mult: float = 1.,
+            reinitialization_period: int = 5,
+            updates_num: int = 10,
+            holes_per_axis: tuple = (4, 2),
+            holes_radius: float = 0.6
     ):
         self.mesh = mesh
         self.mesh_shape = mesh_shape
@@ -33,6 +37,11 @@ class LevelSetMethod:
 
         self.low_density_value = 1e-4
         self.lag_mult = lag_mult
+        self.reinitialization_period = reinitialization_period
+        self.updates_num = updates_num
+        self.holes_per_axis = holes_per_axis
+        self.holes_radius = holes_radius
+
         self.adj_elems = construct_elems_adj_graph(mesh)
 
         self.plots_utils = PlottingUtils(
@@ -75,7 +84,7 @@ class LevelSetMethod:
             mesh=self.mesh,
             low_density_value=self.low_density_value
         )
-        density = sign_dist_init.init_domain_with_holes((4, 2), 0.6)
+        density = sign_dist_init.init_domain_with_holes(self.holes_per_axis, self.holes_radius)
         init_phi_elems = sign_dist_init(density)
 
         if __debug__:
@@ -95,15 +104,15 @@ class LevelSetMethod:
             self.history.log(density, elems_compliance)
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
             v_function = elems_compliance - self.lag_mult
-            v_function_filtered = self.smoothness_filter(v_function)
+            v_function = self.smoothness_filter(v_function)
             # update phi
-            for _ in range(10):
-                phi.update(v_function_filtered, dt = 1 / np.max(np.abs(v_function_filtered)))
+            for _ in range(self.updates_num):
+                phi.update(v_function, dt = 1 / np.max(np.abs(v_function)))
             # update density based on phi
             phi_values = np.array([phi(x) for x in sign_dist_init.elems_centers])
             density = np.where(phi_values < 0, 1., self.low_density_value)
             # reinitialization
-            if iteration > 0 and iteration % 5 == 0:
+            if iteration > 0 and iteration % self.reinitialization_period == 0:
                 init_phi_elems = sign_dist_init(density)
                 phi.reinitialize(init_phi_elems)
 
