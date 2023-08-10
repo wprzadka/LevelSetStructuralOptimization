@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from sources.LevelSetFunction import LevelSetFunction
+from sources.level_set_function import LevelSetFunction
 from sources.radial_base_functions import RadialBaseFunctions
 
 

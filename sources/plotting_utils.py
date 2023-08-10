@@ -7,7 +7,7 @@ from matplotlib import tri, colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from SimpleFEM.source.mesh import Mesh
-from sources.LevelSetFunction import LevelSetFunction
+from sources.level_set_function import LevelSetFunction
 
 
 class Config(Enum):

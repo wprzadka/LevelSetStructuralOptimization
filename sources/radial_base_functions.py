@@ -4,7 +4,7 @@ from matplotlib import tri
 
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.utilities.computation_utils import center_of_mass
-from sources.LevelSetFunction import LevelSetFunction
+from sources.level_set_function import LevelSetFunction
 
 
 class RadialBaseFunctions(LevelSetFunction):
