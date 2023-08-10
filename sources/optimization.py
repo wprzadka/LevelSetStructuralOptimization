@@ -46,6 +46,7 @@ class LevelSetMethod:
 
         self.plots_utils = PlottingUtils(
             mesh=self.mesh,
+            shape=self.mesh_shape
         )
         self.history = HistoryTracker(
             mesh=mesh,

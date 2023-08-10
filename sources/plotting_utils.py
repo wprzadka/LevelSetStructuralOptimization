@@ -6,17 +6,20 @@ import matplotlib.pyplot as plt
 from matplotlib import tri, colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from SimpleFEM.source.mesh import Mesh
 from sources.LevelSetFunction import LevelSetFunction
 
 
 class Config(Enum):
     IMAGES_PATH = 'images'
+    VELOCITY_BOUNDS = (-0.2 ,2)
 
 
 class PlottingUtils:
 
-    def __init__(self, mesh):
+    def __init__(self, mesh: Mesh, shape: tuple):
         self.mesh = mesh
+        self.ratio = shape[1] / shape[0]
 
     def make_plots(
             self,
@@ -28,15 +31,14 @@ class PlottingUtils:
         self.draw(
             density,
             f'density/density{iteration}',
-            ratio=1 / 3,
             norm=colors.Normalize(vmin=0, vmax=1),
             cmap='gray_r'
         )
+        vel_min, vel_max = Config.VELOCITY_BOUNDS.value
         self.draw(
             velocity,
             f'velocity/velocity{iteration}',
-            ratio=1 / 3,
-            norm=colors.Normalize(vmin=-1, vmax=4),
+            norm=colors.Normalize(vmin=vel_min, vmax=vel_max),
             cmap='Blues_r'
         )
         self.plot_displ(
@@ -44,25 +46,22 @@ class PlottingUtils:
             density,
             scale_factor=1,
             file_name=f'displacement/displacement{iteration}',
-            ratio = 1 / 3
         )
 
     def initial_domain_plot(self, density: np.ndarray, phi: np.ndarray):
         self.draw(
             density,
             'initial_domain',
-            ratio=1 / 3,
             norm=colors.Normalize(vmin=0, vmax=1),
             cmap='gray_r'
         )
         self.draw(
             phi,
             'initial_phi',
-            ratio=1 / 3
         )
 
 
-    def plot_displ(self, displ, density, scale_factor: float, file_name: str, ratio: float = None):
+    def plot_displ(self, displ, density, scale_factor: float, file_name: str):
         half = len(displ) // 2
         displacements = scale_factor * np.vstack((displ[:half], displ[half:])).T
 
@@ -83,16 +82,16 @@ class PlottingUtils:
         plt.triplot(after, color='#ff7f0e')
 
         ax = plt.gca()
-        if ratio is not None:
+        if self.ratio is not None:
             x_left, x_right = ax.get_xlim()
             y_low, y_high = ax.get_ylim()
-            ax.set_aspect(abs((x_right - x_left) / (y_low - y_high)) * ratio)
+            ax.set_aspect(abs((x_right - x_left) / (y_low - y_high)) * self.ratio)
 
         plt.grid()
         plt.savefig(os.path.join(Config.IMAGES_PATH.value, file_name), bbox_inches='tight')
         plt.close()
 
-    def draw(self, elem_values: np.ndarray, file_name: str, ratio: float = None, norm=None, cmap='gray', colorbar_ticks=None):
+    def draw(self, elem_values: np.ndarray, file_name: str, norm=None, cmap='gray', colorbar_ticks=None):
         triangulation = tri.Triangulation(
             x=self.mesh.coordinates2D[:, 0],
             y=self.mesh.coordinates2D[:, 1],
@@ -103,10 +102,10 @@ class PlottingUtils:
         img = ax.tripcolor(triangulation, elem_values, cmap=cmap, norm=norm)
 
         cbar_ax = ax
-        if ratio is not None:
+        if self.ratio is not None:
             x_left, x_right = ax.get_xlim()
             y_low, y_high = ax.get_ylim()
-            ax.set_aspect(abs((x_right - x_left) / (y_low - y_high)) * ratio)
+            ax.set_aspect(abs((x_right - x_left) / (y_low - y_high)) * self.ratio)
 
             ax_div = make_axes_locatable(ax)
             cbar_ax = ax_div.append_axes('right', size='3%', pad='1%')
@@ -121,19 +120,24 @@ class PlottingUtils:
         plt.savefig(os.path.join(Config.IMAGES_PATH.value, file_name), bbox_inches='tight')
         plt.close(fig)
 
-    def plot_implicit_function(self, rbf: LevelSetFunction, file_name: str):
-        dom_x = np.linspace(0, 180, 100)
-        dom_y = np.linspace(0, 60, 100)
+    def plot_implicit_function(self, shape: tuple, rbf: LevelSetFunction, file_name: str):
+        dom_x = np.linspace(0, shape[0], 100)
+        dom_y = np.linspace(0, shape[1], 100)
         X, Y = np.meshgrid(dom_x, dom_y)
         Z = np.array([
             rbf(v) for v in zip(X.flatten(), Y.flatten())
         ]).reshape(X.shape)
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
         ax.set_box_aspect((np.ptp(X), np.ptp(Y), 20))
-        ax.plot_surface([0, 180, 180, 0], [0, 0, 60, 60], np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]), color='tab:blue')
+        ax.plot_surface(
+            [0, shape[0], shape[0], 0],
+            [0, 0, shape[1], shape[1]],
+            np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
+            color='tab:blue'
+        )
         ax.plot_surface(X, Y, Z, cmap='viridis')
 
-        ax.view_init(120, 30)
+        ax.view_init(80, 270)
 
         plt.savefig(os.path.join(Config.IMAGES_PATH.value, file_name), bbox_inches='tight')
         plt.close(fig)
