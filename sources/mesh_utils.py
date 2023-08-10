@@ -1,4 +1,5 @@
 from itertools import combinations
+import numpy as np
 
 from SimpleFEM.source.mesh import Mesh
 
@@ -14,17 +15,19 @@ def construct_nodes_adj_graph(mesh: Mesh):
     return neighbours
 
 
-def construct_elems_adj_graph(mesh: Mesh):
-    neighbours = [[] for _ in range(mesh.elems_num)]
-    for fst in range(mesh.elems_num):
-        for snd in range(fst + 1, mesh.elems_num):
+def construct_elems_adj_graph(mesh: Mesh, elems_of_node:np.ndarray = None):
+    if elems_of_node is None:
+        elems_of_node = create_nodes_to_elems_mapping(mesh)
+    neighbours = [set() for _ in range(mesh.elems_num)]
+    for fst, nodes in enumerate(mesh.nodes_of_elem):
+        close_elems = (elems_of_node[n] for n in nodes)
+        for snd in (x for others in close_elems for x in others):
             if len([
                 x for x in mesh.nodes_of_elem[fst]
                 if x in mesh.nodes_of_elem[snd]
             ]) == 2:
-                neighbours[fst].append(snd)
-                neighbours[snd].append(fst)
-
+                neighbours[fst].add(snd)
+    neighbours = [list(x) for x in neighbours]
     assert all([len(x) > 0 for x in neighbours])
     return neighbours
 
