@@ -15,7 +15,7 @@ def construct_nodes_adj_graph(mesh: Mesh):
     return neighbours
 
 
-def construct_elems_adj_graph(mesh: Mesh, elems_of_node:np.ndarray = None):
+def construct_elems_adj_graph(mesh: Mesh, elems_of_node: np.ndarray = None):
     if elems_of_node is None:
         elems_of_node = create_nodes_to_elems_mapping(mesh)
     neighbours = [set() for _ in range(mesh.elems_num)]
