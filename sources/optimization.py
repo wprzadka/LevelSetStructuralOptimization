@@ -4,6 +4,7 @@ import numpy as np
 from SimpleFEM.source.examples.materials import MaterialProperty
 from SimpleFEM.source.mesh import Mesh
 from SimpleFEM.source.fem.elasticity_setup import ElasticitySetup as FEM
+from SimpleFEM.source.utilities.computation_utils import center_of_mass
 from sources.history_tracker import HistoryTracker
 from sources.mesh_utils import construct_elems_adj_graph
 from sources.plotting_utils import PlottingUtils
@@ -43,6 +44,7 @@ class LevelSetMethod:
         self.holes_radius = holes_radius
 
         self.adj_elems = construct_elems_adj_graph(mesh)
+        self.elems_centers = np.array([center_of_mass(self.mesh.coordinates2D[nodes]) for nodes in self.mesh.nodes_of_elem])
 
         self.plots_utils = PlottingUtils(
             mesh=self.mesh,
@@ -58,8 +60,23 @@ class LevelSetMethod:
         for elem_idx, nodes_ids in enumerate(self.mesh.nodes_of_elem):
             base_func_ids = np.hstack((nodes_ids, nodes_ids + self.mesh.nodes_num))
             elem_displacement = np.expand_dims(displacement[base_func_ids], 1)
-            elements_compliance[elem_idx] = elem_displacement.T @ elem_stiff[elem_idx] @ elem_displacement
-        return elements_compliance * density
+            elements_compliance[elem_idx] =\
+                elem_displacement.T @ elem_stiff[elem_idx] @ elem_displacement
+        elements_compliance *= density
+        return elements_compliance
+
+    def work_of_body_forces(self, density: np.ndarray, displacement: np.ndarray):
+        half = len(displacement) // 2
+        displ_2d = np.vstack((displacement[:half], displacement[half:])).T
+        fu_vals = np.array([
+            2 * self.rhs_func(x) @ u for x, u in
+            zip(self.elems_centers, displ_2d)
+        ])
+        elem_fu_vals = np.array([
+            np.average(fu_vals[nodes]) for nodes in self.mesh.nodes_of_elem
+        ])
+        elem_fu_vals *= density
+        return elem_fu_vals
 
     def smoothness_filter(self, vals: np.ndarray):
         new_vals = np.empty_like(vals)
@@ -94,23 +111,25 @@ class LevelSetMethod:
         # compute local stiffness matrices per element
         elems_stiff_mat = np.array([fem.construct_local_stiffness_matrix(el_idx) for el_idx in range(self.mesh.elems_num)])
 
-        phi = RbfFilterPoints(points_ratio=0.3, points=sign_dist_init.elems_centers, init_values=init_phi_elems)
+        phi = RbfFilterPoints(points_ratio=0.3, points=self.elems_centers, init_values=init_phi_elems)
 
         for iteration in range(1, iteration_limit):
             print(f"iteration {iteration}")
             # compute compliance
             displacement = fem.solve(modifier=density)
             elems_compliance = self.compliance(density, displacement, elem_stiff=elems_stiff_mat)
+            elems_fu = self.work_of_body_forces(density, displacement)
 
             self.history.log(density, elems_compliance)
             # compute v s.t. J'(\Omega) = \int_{\partial\Omega} v \Theta n = 0
-            v_function = elems_compliance - self.lag_mult
+
+            v_function = elems_compliance - elems_fu - self.lag_mult
             v_function = self.smoothness_filter(v_function)
             # update phi
             for _ in range(self.updates_num):
                 phi.update(v_function, dt = 1 / np.max(np.abs(v_function)))
             # update density based on phi
-            phi_values = np.array([phi(x) for x in sign_dist_init.elems_centers])
+            phi_values = np.array([phi(x) for x in self.elems_centers])
             density = np.where(phi_values < 0, 1., self.low_density_value)
             # reinitialization
             if iteration > 0 and iteration % self.reinitialization_period == 0:
@@ -124,7 +143,7 @@ class LevelSetMethod:
                     v_function,
                     iteration
                 )
-                self.plots_utils.plot_implicit_function(rbf=phi, file_name=f'phi/phi{iteration}')
+                self.plots_utils.plot_implicit_function(shape=self.mesh_shape, rbf=phi, file_name=f'phi/phi{iteration}')
 
                 if iteration == 64:
                     self.plots_utils.plot_history(history=self.history.history, file_name=f'history{iteration}')
