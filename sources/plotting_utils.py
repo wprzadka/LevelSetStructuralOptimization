@@ -12,7 +12,8 @@ from sources.level_set_function import LevelSetFunction
 
 class Config(Enum):
     IMAGES_PATH = 'images'
-    VELOCITY_BOUNDS = (-0.2 ,2)
+    IMAGES_SUBDIRS = ['density', 'velocity', 'displacement', 'phi']
+    VELOCITY_BOUNDS = (-0.2, 2)
 
 
 class PlottingUtils:
@@ -20,6 +21,13 @@ class PlottingUtils:
     def __init__(self, mesh: Mesh, shape: tuple):
         self.mesh = mesh
         self.ratio = shape[1] / shape[0]
+
+        if not os.path.exists(Config.IMAGES_PATH.value):
+            os.makedirs(Config.IMAGES_PATH.value)
+        for v in Config.IMAGES_SUBDIRS.value:
+            path = os.path.join(Config.IMAGES_PATH.value, v)
+            if not os.path.exists(path):
+                os.makedirs(path)
 
     def make_plots(
             self,
